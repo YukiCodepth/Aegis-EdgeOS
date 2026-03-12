@@ -6,4 +6,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -g")
 
 include_directories(include)
-add_executable(aegis_controller src/main.c)
+
+# Compile BOTH main.c and monitor.c into the final executable
+add_executable(aegis_controller src/main.c src/monitor.c)
