@@ -1,20 +1,19 @@
 #include "../include/core.h"
 
+// 1. The Boot Sequence (Phase 1)
 void boot_sequence() {
     pid_t daemon_pid;
 
     printf("========================================\n");
     printf("[SYSTEM] Booting Aegis Core Controller...\n");
     
-    // Spawn the background daemon
+    // Spawn the background memory daemon
     daemon_pid = fork();
     
     if (daemon_pid == 0) {
-        // This is the cloned child process. It becomes the ghost.
         start_memory_monitor();
         exit(EXIT_SUCCESS); 
     } else if (daemon_pid > 0) {
-        // Parent acknowledges the ghost
         printf("[SYSTEM] Memory Daemon started in background (PID: %d)\n", daemon_pid);
     } else {
         printf("[ERROR] Failed to boot Memory Daemon.\n");
@@ -24,7 +23,7 @@ void boot_sequence() {
     printf("========================================\n");
 }
 
-// 1. The Parser
+// 2. The Command Parser (Phase 1)
 char **split_line(char *line) {
     int bufsize = AEGIS_TOK_BUFSIZE, position = 0;
     char **tokens = malloc(bufsize * sizeof(char*));
@@ -45,7 +44,7 @@ char **split_line(char *line) {
     return tokens;
 }
 
-// 2. The Execution Engine
+// 3. The Execution Engine (Phase 1)
 int execute_command(char **args) {
     pid_t pid;
     int status;
@@ -56,7 +55,6 @@ int execute_command(char **args) {
 
     pid = fork();
     if (pid == 0) {
-        // Child process: replace itself with the Linux command
         if (execvp(args[0], args) == -1) {
             perror("aegis"); 
         }
@@ -64,7 +62,6 @@ int execute_command(char **args) {
     } else if (pid < 0) {
         perror("aegis");
     } else {
-        // Parent process (Aegis Core) waits for the command to finish
         do {
             waitpid(pid, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status));
@@ -73,7 +70,7 @@ int execute_command(char **args) {
     return 1;
 }
 
-// 3. The Core Loop
+// 4. The Core Loop (Phase 1 + Phase 2 Hardware Bridge)
 void core_loop() {
     char input_buffer[256]; 
     char **args;
@@ -84,7 +81,6 @@ void core_loop() {
         
         if (fgets(input_buffer, sizeof(input_buffer), stdin) != NULL) {
             
-            // Remove the newline character
             input_buffer[strcspn(input_buffer, "\n")] = 0;
 
             if (strcmp(input_buffer, "shutdown") == 0) {
@@ -94,12 +90,40 @@ void core_loop() {
             }
 
             args = split_line(input_buffer);
+            
+            // --- NEW PHASE 2 HARDWARE INTERCEPTOR LOGIC ---
+            if (args[0] != NULL && strcmp(args[0], "node") == 0) {
+                if (args[1] != NULL && strcmp(args[1], "connect") == 0) {
+                    // Command format: node connect /dev/ttyUSB0 115200
+                    if (args[2] != NULL && args[3] != NULL) {
+                        int baud = atoi(args[3]);
+                        init_serial(args[2], baud);
+                    } else {
+                        printf("Usage: node connect <port> <baudrate>\n");
+                    }
+                } 
+                else if (args[1] != NULL && strcmp(args[1], "send") == 0) {
+                    // Command format: node send LED_ON
+                    if (args[2] != NULL) {
+                        send_serial(args[2]);
+                    } else {
+                        printf("Usage: node send <message>\n");
+                    }
+                } else {
+                    printf("[NODE ERROR] Unknown node command.\n");
+                }
+                free(args);
+                continue; // Skip the standard Linux execution engine
+            }
+            // ----------------------------------------------
+
             execute_command(args);
             free(args);
         }
     }
 }
 
+// 5. System Initialization
 int main() {
     boot_sequence();
     core_loop();

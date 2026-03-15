@@ -16,5 +16,8 @@ void core_loop();
 char **split_line(char *line);
 int execute_command(char **args);
 void start_memory_monitor(); // Our new daemon prototype
+// Add these right below void start_memory_monitor();
+int init_serial(const char* portname, int baudrate);
+void send_serial(const char* message);
 
 #endif
