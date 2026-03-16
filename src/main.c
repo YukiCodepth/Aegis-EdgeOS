@@ -70,7 +70,7 @@ int execute_command(char **args) {
     return 1;
 }
 
-// 4. The Core Loop (Phase 1 + Phase 2 Hardware Bridge)
+// 4. The Core Loop (Phase 1 + Phase 2 Hardware & AI Bridge)
 void core_loop() {
     char input_buffer[256]; 
     char **args;
@@ -91,10 +91,15 @@ void core_loop() {
 
             args = split_line(input_buffer);
             
-            // --- NEW PHASE 2 HARDWARE INTERCEPTOR LOGIC ---
-            if (args[0] != NULL && strcmp(args[0], "node") == 0) {
+            // Prevent crashes if the user just presses Enter
+            if (args[0] == NULL) {
+                free(args);
+                continue;
+            }
+
+            // --- PHASE 2: HARDWARE INTERCEPTOR ---
+            if (strcmp(args[0], "node") == 0) {
                 if (args[1] != NULL && strcmp(args[1], "connect") == 0) {
-                    // Command format: node connect /dev/ttyUSB0 115200
                     if (args[2] != NULL && args[3] != NULL) {
                         int baud = atoi(args[3]);
                         init_serial(args[2], baud);
@@ -103,7 +108,6 @@ void core_loop() {
                     }
                 } 
                 else if (args[1] != NULL && strcmp(args[1], "send") == 0) {
-                    // Command format: node send LED_ON
                     if (args[2] != NULL) {
                         send_serial(args[2]);
                     } else {
@@ -113,9 +117,31 @@ void core_loop() {
                     printf("[NODE ERROR] Unknown node command.\n");
                 }
                 free(args);
-                continue; // Skip the standard Linux execution engine
+                continue; 
             }
-            // ----------------------------------------------
+
+            // --- PHASE 2: AI INTERCEPTOR ---
+            else if (strcmp(args[0], "ai") == 0) {
+                if (args[1] != NULL && strcmp(args[1], "mode") == 0 && args[2] != NULL) {
+                    if (strcmp(args[2], "local") == 0) set_ai_mode(1);
+                    else if (strcmp(args[2], "cloud") == 0) set_ai_mode(0);
+                    else printf("Usage: ai mode <local|cloud>\n");
+                }
+                else if (args[1] != NULL && strcmp(args[1], "intent") == 0) {
+                    // Reconstruct the user's sentence from the array
+                    char intent[256] = "";
+                    for (int i = 2; args[i] != NULL; i++) {
+                        strcat(intent, args[i]);
+                        strcat(intent, " ");
+                    }
+                    process_intent(intent);
+                } else {
+                    printf("Commands:\n  ai mode <local|cloud>\n  ai intent <your sentence here>\n");
+                }
+                free(args);
+                continue;
+            }
+            // ----------------------------------------
 
             execute_command(args);
             free(args);

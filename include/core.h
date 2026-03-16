@@ -19,5 +19,8 @@ void start_memory_monitor(); // Our new daemon prototype
 // Add these right below void start_memory_monitor();
 int init_serial(const char* portname, int baudrate);
 void send_serial(const char* message);
+// Add these below the serial functions
+void set_ai_mode(int mode);
+void process_intent(const char* user_text);
 
 #endif

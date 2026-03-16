@@ -7,5 +7,5 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -g")
 
 include_directories(include)
 
-# Compile main, monitor, AND our new serial driver into the executable
-add_executable(aegis_controller src/main.c src/monitor.c src/serial.c)
+# Compile main, monitor, serial, AND the new ai driver into the executable
+add_executable(aegis_controller src/main.c src/monitor.c src/serial.c src/ai.c)
