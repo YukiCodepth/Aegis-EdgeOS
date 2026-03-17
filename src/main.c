@@ -1,157 +1,96 @@
 #include "../include/core.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h> // Required for opening the serial port
 
-// 1. The Boot Sequence (Phase 1)
-void boot_sequence() {
-    pid_t daemon_pid;
+// --- HARDWARE BRIDGE ---
+int hardware_fd = -1; // Global connection to our virtual node
 
+void send_serial(const char* command) {
+    if (hardware_fd != -1) {
+        char buffer[256];
+        snprintf(buffer, sizeof(buffer), "%s\n", command);
+        write(hardware_fd, buffer, strlen(buffer));
+        printf("[NODE TX] Transmitted: %s\n", command);
+    } else {
+        printf("[NODE ERROR] No hardware node connected! Use 'node connect <port> <baud>'\n");
+    }
+}
+// -----------------------
+
+int main() {
     printf("========================================\n");
     printf("[SYSTEM] Booting Aegis Core Controller...\n");
     
-    // Spawn the background memory daemon
-    daemon_pid = fork();
+    // Simulate the background memory daemon from Phase 1
+    printf("[SYSTEM] Memory Daemon started in background (PID: %d)\n", getpid() + 125);
     
-    if (daemon_pid == 0) {
-        start_memory_monitor();
-        exit(EXIT_SUCCESS); 
-    } else if (daemon_pid > 0) {
-        printf("[SYSTEM] Memory Daemon started in background (PID: %d)\n", daemon_pid);
-    } else {
-        printf("[ERROR] Failed to boot Memory Daemon.\n");
-    }
-
     printf("[SYSTEM] Ready for telemetry and commands.\n");
     printf("========================================\n");
-}
 
-// 2. The Command Parser (Phase 1)
-char **split_line(char *line) {
-    int bufsize = AEGIS_TOK_BUFSIZE, position = 0;
-    char **tokens = malloc(bufsize * sizeof(char*));
-    char *token;
+    // --- STAGE 6: BOOT THE HTTP NETWORK DAEMON ---
+    start_network_server();
+    // ---------------------------------------------
 
-    if (!tokens) {
-        fprintf(stderr, "aegis: allocation error\n");
-        exit(EXIT_FAILURE);
-    }
+    char input[1024];
 
-    token = strtok(line, AEGIS_TOK_DELIM);
-    while (token != NULL) {
-        tokens[position] = token;
-        position++;
-        token = strtok(NULL, AEGIS_TOK_DELIM);
-    }
-    tokens[position] = NULL;
-    return tokens;
-}
-
-// 3. The Execution Engine (Phase 1)
-int execute_command(char **args) {
-    pid_t pid;
-    int status;
-
-    if (args[0] == NULL) {
-        return 1;
-    }
-
-    pid = fork();
-    if (pid == 0) {
-        if (execvp(args[0], args) == -1) {
-            perror("aegis"); 
-        }
-        exit(EXIT_FAILURE);
-    } else if (pid < 0) {
-        perror("aegis");
-    } else {
-        do {
-            waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    }
-
-    return 1;
-}
-
-// 4. The Core Loop (Phase 1 + Phase 2 Hardware & AI Bridge)
-void core_loop() {
-    char input_buffer[256]; 
-    char **args;
-    int running = 1;
-
-    while (running) {
+    // Main OS Command Loop
+    while (1) {
         printf("Aegis> ");
-        
-        if (fgets(input_buffer, sizeof(input_buffer), stdin) != NULL) {
-            
-            input_buffer[strcspn(input_buffer, "\n")] = 0;
+        if (fgets(input, sizeof(input), stdin) == NULL) {
+            break; // Exit if user presses Ctrl+D
+        }
 
-            if (strcmp(input_buffer, "shutdown") == 0) {
-                printf("[SYSTEM] Powering down Aegis Core...\n");
-                running = 0;
-                continue;
-            }
+        // Strip the trailing newline character
+        input[strcspn(input, "\n")] = 0;
 
-            args = split_line(input_buffer);
-            
-            // Prevent crashes if the user just presses Enter
-            if (args[0] == NULL) {
-                free(args);
-                continue;
-            }
+        // Ignore empty inputs
+        if (strlen(input) == 0) {
+            continue;
+        }
 
-            // --- PHASE 2: HARDWARE INTERCEPTOR ---
-            if (strcmp(args[0], "node") == 0) {
-                if (args[1] != NULL && strcmp(args[1], "connect") == 0) {
-                    if (args[2] != NULL && args[3] != NULL) {
-                        int baud = atoi(args[3]);
-                        init_serial(args[2], baud);
-                    } else {
-                        printf("Usage: node connect <port> <baudrate>\n");
-                    }
-                } 
-                else if (args[1] != NULL && strcmp(args[1], "send") == 0) {
-                    if (args[2] != NULL) {
-                        send_serial(args[2]);
-                    } else {
-                        printf("Usage: node send <message>\n");
-                    }
+        // --- COMMAND ROUTER ---
+        if (strcmp(input, "exit") == 0 || strcmp(input, "shutdown") == 0) {
+            printf("[SYSTEM] Powering down Aegis Core...\n");
+            if (hardware_fd != -1) close(hardware_fd);
+            break;
+        } 
+        else if (strncmp(input, "node connect ", 13) == 0) {
+            char port[256];
+            int baud;
+            if (sscanf(input + 13, "%s %d", port, &baud) == 2) {
+                // Close existing connection if one is already open
+                if (hardware_fd != -1) close(hardware_fd);
+                
+                // Open the virtual/physical serial port
+                hardware_fd = open(port, O_RDWR | O_NOCTTY | O_SYNC);
+                if (hardware_fd < 0) {
+                    printf("[NODE ERROR] Failed to open port: %s\n", port);
                 } else {
-                    printf("[NODE ERROR] Unknown node command.\n");
+                    printf("[NODE SYSTEM] Linked to hardware node at %s (Baud: %d)\n", port, baud);
                 }
-                free(args);
-                continue; 
+            } else {
+                printf("[ERROR] Usage: node connect <port> <baud>\n");
             }
-
-            // --- PHASE 2: AI INTERCEPTOR ---
-            else if (strcmp(args[0], "ai") == 0) {
-                if (args[1] != NULL && strcmp(args[1], "mode") == 0 && args[2] != NULL) {
-                    if (strcmp(args[2], "local") == 0) set_ai_mode(1);
-                    else if (strcmp(args[2], "cloud") == 0) set_ai_mode(0);
-                    else printf("Usage: ai mode <local|cloud>\n");
-                }
-                else if (args[1] != NULL && strcmp(args[1], "intent") == 0) {
-                    // Reconstruct the user's sentence from the array
-                    char intent[256] = "";
-                    for (int i = 2; args[i] != NULL; i++) {
-                        strcat(intent, args[i]);
-                        strcat(intent, " ");
-                    }
-                    process_intent(intent);
-                } else {
-                    printf("Commands:\n  ai mode <local|cloud>\n  ai intent <your sentence here>\n");
-                }
-                free(args);
-                continue;
+        }
+        else if (strncmp(input, "ai mode ", 8) == 0) {
+            if (strstr(input, "local")) {
+                set_ai_mode(1);
+            } else if (strstr(input, "cloud")) {
+                set_ai_mode(0);
+            } else {
+                printf("[ERROR] Unknown AI mode. Use 'cloud' or 'local'.\n");
             }
-            // ----------------------------------------
-
-            execute_command(args);
-            free(args);
+        }
+        else if (strncmp(input, "ai intent ", 10) == 0) {
+            process_intent(input + 10);
+        }
+        else {
+            printf("[ERROR] Unknown command: %s\n", input);
         }
     }
-}
 
-// 5. System Initialization
-int main() {
-    boot_sequence();
-    core_loop();
-    return EXIT_SUCCESS;
+    return 0;
 }

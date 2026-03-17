@@ -22,5 +22,6 @@ void send_serial(const char* message);
 // Add these below the serial functions
 void set_ai_mode(int mode);
 void process_intent(const char* user_text);
+void start_network_server();
 
 #endif

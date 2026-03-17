@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
-project(AegisCore C)
+project(AegisCore)
 
-# Enforce strict C standards and memory warnings
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -g")
+set(CMAKE_C_STANDARD 99)
 
-include_directories(include)
+# ---> UPDATE THIS LINE to include src/network.c <---
+add_executable(aegis_controller src/main.c src/ai.c src/network.c)
 
-# Compile main, monitor, serial, AND the new ai driver into the executable
-add_executable(aegis_controller src/main.c src/monitor.c src/serial.c src/ai.c)
+# ---> ADD THIS NEW LINE directly below it <---
+target_link_libraries(aegis_controller pthread)
