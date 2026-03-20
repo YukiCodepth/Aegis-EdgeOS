@@ -1,5 +1,19 @@
 #include "../include/core.h"
 #include <stdlib.h> // Required for reading environment variables
+#include <string.h>
+#include <stdio.h>
+
+void update_hardware_payload(const char* command) {
+    // Open the JSON file in "w" (write) mode, which completely overwrites the old data
+    FILE *file = fopen("./public/node_config.json", "w");
+    if (file) {
+        fprintf(file, "{\n    \"system\": \"Aegis Core\",\n    \"status\": \"Online\",\n    \"target_node\": \"ESP32\",\n    \"command\": \"%s\"\n}\n", command);
+        fclose(file);
+        printf("[SYSTEM] Web Payload Updated -> Broadcast Command: %s\n", command);
+    } else {
+        printf("[ERROR] File I/O Failed. Cannot update public/node_config.json\n");
+    }
+}
 
 int ai_mode = 0;
 
@@ -78,8 +92,12 @@ void process_intent(const char* user_text) {
         if (content_end) {
             *content_end = '\0'; 
             printf("[AI DECISION] Hardware Command Extracted: %s\n", content_start);
-            printf("[SYSTEM] Forwarding AI decision to hardware node...\n");
-            send_serial(content_start);
+            printf("[SYSTEM] Forwarding AI decision to Wireless Telemetry...\n");
+            
+            // --- THE AUTONOMOUS BRIDGE FIX ---
+            update_hardware_payload(content_start); 
+            // ---------------------------------
+            
             return;
         }
     }

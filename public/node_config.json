@@ -1,1 +1,6 @@
-{"system": "Aegis Core", "status": "Online", "target_node": "ESP32"}
+{
+    "system": "Aegis Core",
+    "status": "Online",
+    "target_node": "ESP32",
+    "command": "LED_ON"
+}

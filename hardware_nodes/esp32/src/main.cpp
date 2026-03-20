@@ -3,13 +3,14 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-const char* ssid = "Yukkinofi";
+// --- UPDATE THESE TWO LINES WITH YOUR HOTSPOT INFO ---
+const char* ssid = "Yukkifi";
 const char* password = "komachan";
 
-// Change this line to your new IP!
-const char* aegis_server = "http://10.211.164.197:8080/node_config.json";
+// Your Asahi Mac IP Address
+const char* aegis_server = "http://10.211.164.197:8080/node_config.json"; 
 
-const int LED_PIN = 2; // Standard onboard blue LED
+const int LED_PIN = 4; // Standard onboard blue LED
 
 void setup() {
     Serial.begin(115200);
@@ -51,11 +52,22 @@ void loop() {
 
             if (!error) {
                 const char* target = doc["target_node"];
-                if (strcmp(target, "ESP32") == 0) {
-                    Serial.println("[SYSTEM] Command matched! Firing hardware relay (LED)...");
-                    digitalWrite(LED_PIN, HIGH);
-                    delay(1000); 
-                    digitalWrite(LED_PIN, LOW);
+                const char* command = doc["command"]; // Pull the new AI command field
+
+                if (target && strcmp(target, "ESP32") == 0) {
+                    
+                    // --- THE AUTONOMOUS HARDWARE LOGIC ---
+                    if (command && strcmp(command, "LED_ON") == 0) {
+                        Serial.println("[SYSTEM] AI Command Executed: LIGHTS ON");
+                        digitalWrite(LED_PIN, HIGH); 
+                    } 
+                    else if (command && strcmp(command, "LED_OFF") == 0) {
+                        Serial.println("[SYSTEM] AI Command Executed: LIGHTS OFF");
+                        digitalWrite(LED_PIN, LOW); 
+                    }
+                    else {
+                        Serial.println("[SYSTEM] Awaiting valid AI command...");
+                    }
                 }
             }
         }
