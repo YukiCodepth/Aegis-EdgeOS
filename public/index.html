@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGIS OS | TERMINAL</title>
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ea;
+            --neon-green: #39ff14;
+            --dark-bg: #050505;
+            --panel-bg: rgba(0, 243, 255, 0.05);
+        }
+        
+        body {
+            background-color: var(--dark-bg);
+            color: var(--neon-blue);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 30px;
+            overflow-x: hidden;
+            text-shadow: 0 0 5px var(--neon-blue);
+        }
+
+        /* CRT Scanline Effect */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        h1 {
+            color: var(--neon-pink);
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--neon-pink);
+            padding-bottom: 10px;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px var(--neon-pink);
+            margin-top: 0;
+        }
+
+        .sys-status {
+            color: var(--neon-green);
+            font-weight: bold;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-top: 30px;
+            position: relative;
+            z-index: 3;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--neon-blue);
+            padding: 20px;
+            box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.1), 0 0 10px rgba(0, 243, 255, 0.2);
+            position: relative;
+        }
+
+        /* Cyberpunk Corner Cutouts */
+        .panel::before {
+            content: ''; position: absolute; top: -1px; left: -1px; width: 20px; height: 20px;
+            border-top: 2px solid var(--neon-pink); border-left: 2px solid var(--neon-pink);
+        }
+        .panel::after {
+            content: ''; position: absolute; bottom: -1px; right: -1px; width: 20px; height: 20px;
+            border-bottom: 2px solid var(--neon-pink); border-right: 2px solid var(--neon-pink);
+        }
+
+        h3 {
+            margin-top: 0;
+            color: var(--neon-green);
+            text-shadow: 0 0 5px var(--neon-green);
+            font-size: 1.2em;
+            letter-spacing: 1px;
+        }
+
+        pre {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            color: var(--neon-green);
+            border: 1px dashed var(--neon-blue);
+            overflow-x: auto;
+        }
+
+        .log-box {
+            height: 150px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--neon-blue);
+            padding: 10px;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+
+        .log-entry { margin-bottom: 5px; }
+        .log-time { color: var(--neon-pink); margin-right: 10px; }
+
+        button {
+            background: transparent;
+            color: var(--neon-blue);
+            border: 1px solid var(--neon-blue);
+            padding: 10px 20px;
+            text-transform: uppercase;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px var(--neon-blue);
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: var(--neon-blue);
+            color: var(--dark-bg);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>[AEGIS CORE] :: OVERRIDE TERMINAL</h1>
+    <p>LINK STATUS: <span class="sys-status">SECURE</span> | KERNEL: ASYNC_C_1.0 | ARCH: ARM64</p>
+
+    <div class="grid">
+        <div class="panel">
+            <h3>// SYSTEM_DIAGNOSTICS</h3>
+            <p><strong>OS:</strong> Aegis EdgeOS (Fedora Host)</p>
+            <p><strong>NPU:</strong> Groq Cloud Engine</p>
+            <p><strong>HOST IP:</strong> 10.211.164.197:8080</p>
+            <p><strong>MEMORY DAEMON:</strong> [ <span class="sys-status">ACTIVE</span> ]</p>
+            <button onclick="manualOverride()">Force Uplink</button>
+        </div>
+
+        <div class="panel">
+            <h3>// EDGE_NODE_TELEMETRY (LIVE)</h3>
+            <div id="loading" style="color: var(--neon-pink);">INITIALIZING HANDSHAKE...</div>
+            <pre id="json-display" style="display: none;"></pre>
+        </div>
+
+        <div class="panel" style="grid-column: span 2;">
+            <h3>// KERNEL_EVENT_LOG</h3>
+            <div class="log-box" id="terminal-log">
+                <div class="log-entry"><span class="log-time">[00:00:00]</span> SYSTEM BOOT SEQUENCE INITIATED...</div>
+                <div class="log-entry"><span class="log-time">[00:00:01]</span> MOUNTING VIRTUAL DOM FILE SYSTEM...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addLog(message) {
+            const logBox = document.getElementById('terminal-log');
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+            logBox.innerHTML += `<div class="log-entry"><span class="log-time">[${timeStr}]</span> ${message}</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function fetchNodeData() {
+            fetch('/node_config.json')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loading').style.display = 'none';
+                    const display = document.getElementById('json-display');
+                    display.style.display = 'block';
+                    
+                    const newData = JSON.stringify(data, null, 4);
+                    if (display.innerText !== newData && display.innerText !== "") {
+                        addLog("PAYLOAD UPDATE DETECTED FROM EDGE NODE.");
+                    }
+                    display.innerText = newData;
+                })
+                .catch(error => {
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('loading').innerText = "[WARN] SIGNAL LOST. RECONNECTING...";
+                    document.getElementById('json-display').style.display = 'none';
+                });
+        }
+
+        function manualOverride() {
+            addLog("MANUAL UPLINK REQUESTED BY USER.");
+            fetchNodeData();
+        }
+
+        // Boot sequence
+        setTimeout(() => addLog("ESTABLISHING TCP SOCKET ON PORT 8080..."), 800);
+        setTimeout(() => addLog("AWAITING HARDWARE NODE PING..."), 1500);
+
+        // Auto-fetch
+        setInterval(fetchNodeData, 2000);
+    </script>
+</body>
+</html>
